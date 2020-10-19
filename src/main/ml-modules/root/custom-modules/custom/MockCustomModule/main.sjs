@@ -22,6 +22,9 @@
    (such as declareUpdate()) or by setting the value of 'stepUpdate' as true in the options and it will be
    executed in update mode.
  */
+
+ // THIS IS A TEST COMMENT BY MMALGERI ON 10/19/2020
+
 const DataHub = require("/data-hub/5/datahub.sjs");
 const datahub = new DataHub();
 
