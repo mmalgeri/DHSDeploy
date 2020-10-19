@@ -1,6 +1,6 @@
 {
   "name" : "EquinixGeoSpatial",
-  "description" : "",
+  "description" : null,
   "batchSize" : 100,
   "threadCount" : 4,
   "stopOnError" : false,
@@ -31,7 +31,7 @@
         "user" : "",
         "runBefore" : false
       },
-      "retryLimit" : null,
+      "retryLimit" : 0,
       "batchSize" : 100,
       "threadCount" : 4,
       "stepDefinitionName" : "default-ingestion",
@@ -78,6 +78,31 @@
         "outputURIReplacement" : "",
         "separator" : ""
       }
+    },
+    "3" : {
+      "name" : "MockCustomModule",
+      "description" : "",
+      "options" : {
+        "additionalCollections" : [ ],
+        "sourceQuery" : "cts.collectionQuery([\"IngestLegacy\"])",
+        "collections" : [ "MockCustomModule" ],
+        "sourceDatabase" : "data-hub-STAGING",
+        "permissions" : "data-hub-operator,read,data-hub-operator,update",
+        "sourceCollection" : "IngestLegacy",
+        "outputFormat" : "json",
+        "targetDatabase" : "data-hub-FINAL"
+      },
+      "customHook" : {
+        "module" : "",
+        "parameters" : { },
+        "user" : "",
+        "runBefore" : false
+      },
+      "retryLimit" : 0,
+      "batchSize" : 100,
+      "threadCount" : 4,
+      "stepDefinitionName" : "MockCustomModule",
+      "stepDefinitionType" : "CUSTOM"
     }
   }
 }
