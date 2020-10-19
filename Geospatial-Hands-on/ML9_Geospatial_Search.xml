@@ -1,0 +1,160 @@
+<export><workspace name="ML9_Geospatial_Search"><query name="1. insert documents" focus="true" listorder="1" taborder="1" active="true" database="12952860939916066628" server="7146967186533113691" database-name="Documents" server-name="App-Services" mode="javascript">'use strict';
+declareUpdate();
+
+const collection = 'geoData';
+const docs = [
+  {
+    location: {
+      type: 'point',
+      coords: '48.856614 2.352221',
+      city: 'Paris'
+    }
+  },
+  {
+    location: {
+      type: 'point',
+      coords: '41.902700, 12.496235',
+      city: 'Rome'
+    }
+  },
+  {
+    location: {
+      type: 'region', 
+      ctsRegion: cts.polygon('POLYGON((-4.5703125 48.394105689295344,-1.4501953125 43.15861150676289,3.0322265625 42.449301428414955,7.55859375 43.923120859884875,7.822265625 49.060819654424115,2.4169921875 51.0634071197396,-4.5703125 48.394105689295344))'),
+      country: 'France'
+    }
+  },
+  {
+    location: {
+      type: 'region', 
+      ctsRegion: cts.polygon('POLYGON((-8.701171875 42.091598712723105,-6.15234375 41.92833577889557,-7.3388671875 37.11816878088744,-5.5810546875 36.16615090943873,-0.8349609375 37.641966061320645,3.1640625 42.449301428414955,-1.9775390625 43.350647598658135,-9.2724609375 43.66936165585671,-8.701171875 42.091598712723105))'),
+      country: 'Spain'
+    }
+  },
+  {
+    location: {
+      type: 'point',
+      coords: '7.4672929, 99.0163766',
+      city: 'City in Thailand'
+    }
+  }
+];
+
+docs.map((doc, i) =&gt; {
+  xdmp.documentInsert(`doc${i + 1}.json`, doc, [], collection);
+  return `Insert doc${i + 1}.json`;
+});
+</query><query name="2. create geo indexes" focus="false" listorder="2" taborder="2" active="true" database="12952860939916066628" server="7146967186533113691" database-name="Documents" server-name="App-Services" mode="javascript">'use strict';
+const indexData = {
+  'geospatial-path-index': [{
+    'path-expression': '/location/coords',
+    'coordinate-system': 'wgs84',
+    'point-format': 'point',
+    'range-value-positions': 'false',
+    'invalid-values': 'reject'
+  }],
+  'geospatial-region-path-index': [{
+    'path-expression': '/location/ctsRegion',
+    'coordinate-system': 'wgs84',
+    'units': 'miles',
+    'geohash-precision': 2,
+    'invalid-values': 'reject'
+  }]
+};
+
+const options = {
+  authentication: {
+    'method': 'digest',
+    'username': 'admin',
+    'password': 'admin'
+  },
+  data: xdmp.quote(indexData),
+  headers : {
+    'content-type' : 'application/json'
+  }
+};
+
+const database = 'Documents';
+const request = xdmp.httpPut(`http://localhost:8002/manage/v2/databases/${database}/properties`, options);
+if ([...request][0].code === 204) {
+  'Indexes added.'
+} else {
+  `Error: ${request}`;
+}
+</query><query name="3. search points" focus="false" listorder="3" taborder="3" active="true" database="12952860939916066628" server="7146967186533113691" database-name="Documents" server-name="App-Services" mode="javascript">/*
+POINT QUERY
+
+Now let's search our database for documents with point type locations.
+
+Let's search using the cts.pathGeospatialQuery which will reference a Geospatial path point index created earlier. 
+
+Test input criteria #1: point, Paris
+Test input criteria #2: region, Westen Europe
+
+*/
+'use strict';
+
+const pointParis = cts.point(48.856614, 2.352221);
+const wEurope = cts.box(20.71070622495366, -17.05078125, 59.95941074508681, 23.90625);
+
+const pointmatches = cts.search(
+  cts.pathGeospatialQuery('/location/coords', (pointParis))
+);
+
+const pointPlaces = [];
+
+for (const doc of pointmatches) {
+  pointPlaces.push(doc.toObject().location.city);
+}
+
+const regionmatches = cts.search(
+  cts.pathGeospatialQuery('/location/coords', (wEurope))
+);
+
+var regionPlaces = [];
+for (const doc of regionmatches) {
+  regionPlaces.push(doc.toObject().location.city);
+}
+
+`Locations containing points in critieria point: ${pointPlaces}
+Locations containing points in critieria region boxEurope: ${regionPlaces}`;
+</query><query name="4. search regions" focus="false" listorder="4" taborder="4" active="true" database="12952860939916066628" server="7146967186533113691" database-name="Documents" server-name="App-Services" mode="javascript">/*
+REGION QUERY
+Now let's search our database for documents with region type locations.
+Let's search using the cts.geospatialRegionQuery which will reference a geospatial region path index created earlier. 
+Test input criteria: region, Western Europe
+*/
+'use strict';
+
+const wEurope = cts.box(20.71070622495366, -17.05078125, 59.95941074508681, 23.90625);
+
+cts.search(
+  cts.geospatialRegionQuery(cts.geospatialRegionPathReference('/location/ctsRegion'), 'within', wEurope)
+);
+
+
+
+
+</query><query name="REGION SEARCH APP" focus="false" listorder="5" taborder="5" active="true" database="12952860939916066628" server="7146967186533113691" database-name="Documents" server-name="App-Services" mode="xquery">import module namespace geojson = "http://marklogic.com/geospatial/geojson" at "/MarkLogic/geospatial/geojson.xqy";
+
+
+let $region := cts:box(20.71070622495366, -17.05078125, 59.95941074508681, 23.90625)
+let $operation := "within"
+
+let $idx := cts:geospatial-region-path-reference("/location/ctsRegion")
+let $qry := cts:geospatial-region-query($idx,$operation,$region,("units=meters"))
+let $res := cts:search(doc(), $qry)/location/ctsRegion/data()
+
+let $regions :=
+for $r in $res
+return object-node { "feature" : object-node { "type":"Feature", "geometry": geojson:to-geojson(cts:region($r)) } }
+
+return object-node {
+  "results" : array-node { $regions }
+}
+
+
+
+
+
+</query></workspace></export>
